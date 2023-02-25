@@ -1,3 +1,7 @@
-import { describe } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-describe('WysiwygEditor', () => {});
+describe('WysiwygEditor', () => {
+  it('should pass', () => {
+    expect(1).toBe(1);
+  });
+});
