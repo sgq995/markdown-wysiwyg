@@ -1,8 +1,13 @@
 import { ParentComponent } from 'solid-js';
 
-export const WysiwygContent: ParentComponent = (props) => {
+export interface WysiwygContentProps {
+  ref: HTMLDivElement | ((e: HTMLDivElement) => void);
+}
+
+export const WysiwygContent: ParentComponent<WysiwygContentProps> = (props) => {
   return (
     <div
+      ref={props.ref}
       contentEditable
       onBeforeInput={(event) => {
         const selection = window.getSelection();
