@@ -1,0 +1,7 @@
+.content {
+  /* all: initial; */
+}
+
+.content > * {
+  all: revert;
+}

@@ -1,4 +1,4 @@
-export type Format = keyof HTMLElementTagNameMap;
+import { Format } from './formats/format';
 
 export enum SelectionType {
   None = 'None',
@@ -11,13 +11,6 @@ function getStartEnd(anchorOffset: number, focusOffset: number) {
   const end = Math.max(anchorOffset, focusOffset);
 
   return { start, end };
-}
-
-function getStartEndFromSelection(selection: Selection) {
-  const anchorOffset = selection.anchorOffset;
-  const focusOffset = selection.focusOffset;
-
-  return getStartEnd(anchorOffset, focusOffset);
 }
 
 function splitTextByOffsets(text: string, start: number, end: number) {
@@ -33,13 +26,18 @@ function splitTextByOffsets(text: string, start: number, end: number) {
 }
 
 function createFormat(format: Format, content: string) {
-  const element = document.createElement(format);
+  const element = document.createElement(format.tagName);
   const textNode = document.createTextNode(content);
   element.appendChild(textNode);
+  format.onCreated(element);
   return element;
 }
 
-function selectElement(element: HTMLElement) {
+function selectElement(root: HTMLElement, element: HTMLElement) {
+  if (!root.contains(element)) {
+    return;
+  }
+
   const range = document.createRange();
   range.selectNodeContents(element.firstChild);
 
@@ -53,30 +51,34 @@ function applyFormatToCaret(
   format: Format,
   selection: Selection
 ) {
-  const node = selection.focusNode;
-  if (!root.contains(node)) {
+  const textNode = selection.focusNode;
+  const other = textNode.parentElement;
+  if (root !== other && !root.contains(other)) {
     return;
   }
 
-  const parent = node.parentElement;
+  const self = createFormat(format, '');
+  format.onCaretApply(root, other, self);
 
-  const element = createFormat(format, '');
-  parent.appendChild(element);
-
-  selectElement(element);
+  selectElement(root, self);
 }
 
 function applyFormatToRangeInElement(
+  root: HTMLElement,
   node: Node,
   format: Format,
   selection: Selection
 ) {
-  const parent = node.parentElement;
-  if (parent.tagName.toUpperCase() === format.toUpperCase()) {
+  const other = node.parentElement;
+  if (other.tagName.toUpperCase() === format.tagName.toUpperCase()) {
+    // TODO: remove format
     return;
   }
 
-  const { start, end } = getStartEndFromSelection(selection);
+  const { start, end } = getStartEnd(
+    selection.anchorOffset,
+    selection.focusOffset
+  );
   const { leftText, middleText, rightText } = splitTextByOffsets(
     node.textContent,
     start,
@@ -90,22 +92,35 @@ function applyFormatToRangeInElement(
 
   // target = parent, action = insertFormatAfter, payload = { child: node.nextSibling, format, content: middleText }
   // target = null, action = createFormat, payload = { format, content: middleText }
-  const element = createFormat(format, middleText);
+  const self = createFormat(format, middleText);
   // target = parent, action = insertAfter, payload = { child: node.nextSibling, node: element }
-  parent.insertBefore(element, node.nextSibling);
+  root.insertBefore(self, other.nextSibling);
 
+  // TODO: keep the format
   if (rightText.length > 0) {
     // target = null, action = createText, payload = { content: rightText }
     const rightTextNode = document.createTextNode(rightText);
     // target = parent, action = insertAfter, payload = { child: element, node: rightTextNode }
-    parent.insertBefore(rightTextNode, element.nextSibling);
+    other.insertBefore(rightTextNode, self.nextSibling);
   }
 
-  if (leftText.length === 0) {
-    parent.removeChild(node);
+  if (leftText.length === 0 && rightText.length === 0) {
+    other.remove();
   }
 
-  selectElement(element);
+  selectElement(root, self);
+}
+
+function applyFormatToRangeInMultipleElements(
+  root: HTMLElement,
+  anchor: Node,
+  focus: Node,
+  format: Format,
+  selection: Selection
+) {
+  const self = createFormat(format, '');
+
+  selectElement(root, self);
 }
 
 function applyFormatToRange(
@@ -124,7 +139,15 @@ function applyFormatToRange(
   }
 
   if (anchor === focus) {
-    applyFormatToRangeInElement(anchor, format, selection);
+    applyFormatToRangeInElement(root, anchor, format, selection);
+  } else {
+    applyFormatToRangeInMultipleElements(
+      root,
+      anchor,
+      focus,
+      format,
+      selection
+    );
   }
 }
 

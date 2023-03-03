@@ -1,5 +1,6 @@
 import { JSX, ParentComponent, splitProps } from 'solid-js';
-import { applyFormat, Format } from '../lib/format';
+import { applyFormat } from '../lib/apply';
+import { Format } from '../lib/formats/format';
 
 export interface WysiwygToolbarButtonProps
   extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
