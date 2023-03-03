@@ -85,23 +85,29 @@ function applyFormatToRangeInElement(
     end
   );
 
-  if (leftText.length > 0) {
-    // target = node, action = replaceText, payload = null
-    node.textContent = leftText;
-  }
-
   // target = parent, action = insertFormatAfter, payload = { child: node.nextSibling, format, content: middleText }
   // target = null, action = createFormat, payload = { format, content: middleText }
   const self = createFormat(format, middleText);
-  // target = parent, action = insertAfter, payload = { child: node.nextSibling, node: element }
-  root.insertBefore(self, other.nextSibling);
 
-  // TODO: keep the format
+  if (leftText.length > 0) {
+    // target = node, action = replaceText, payload = null
+    other.textContent = leftText;
+    // target = parent, action = insertAfter, payload = { child: node.nextSibling, node: element }
+    root.insertBefore(self, other.nextSibling);
+  }
+
+  if (leftText.length === 0) {
+    root.insertBefore(self, other);
+    other.textContent = rightText;
+  }
+
   if (rightText.length > 0) {
     // target = null, action = createText, payload = { content: rightText }
-    const rightTextNode = document.createTextNode(rightText);
+    // const rightTextNode = document.createTextNode(rightText);
+    const rightNode = other.cloneNode();
+    rightNode.textContent = rightText;
     // target = parent, action = insertAfter, payload = { child: element, node: rightTextNode }
-    other.insertBefore(rightTextNode, self.nextSibling);
+    root.insertBefore(rightNode, self.nextSibling);
   }
 
   if (leftText.length === 0 && rightText.length === 0) {
